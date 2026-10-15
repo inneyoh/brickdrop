@@ -181,7 +181,10 @@ const CONFIG = {
   gravity: 950, maxFallSpeed: 1100,
 
   // --- angle control ---
-  gyroScale: 1.0,                 // brick degrees per degree of phone "steering wheel" rotation
+  gyroScale: 1 / 1.15,            // brick degrees per degree of phone rotation (needs 15% more tilt than 1:1)
+  gyroCraneDeadzone: 3,           // phone: tilts smaller than this (deg) don't move the crane
+  gyroCraneSpeed: 9,              // phone: crane speed in px/s per degree of tilt
+  gyroCraneMax: 320,              // phone: crane top speed (px/s)
   crankRadius: 60,                // touch fallback: circle your finger
   mouseDegPerPx: 0.35,            // left/right control: brick degrees per px of mouse slide                // mouse circle control: smaller = more twitchy
   wheelDegPerNotch: 3,            // mouse wheel fine-tune
@@ -341,7 +344,8 @@ resize();
    ===================================================================== */
 let AC = null, MASTER = null, NOISE = null, SFX_GAIN = null, MUSIC_GAIN = null, CRANE = null;
 const VOL_LEVELS = [0, .35, .7, 1];                  // Mute, 1, 2, 3
-const MUSIC_MAX = .55;                               // music sits under the sound effects
+const MUSIC_MAX = .55;
+const SFX_BOOST = 1.5;                               // all sound effects +50%                               // music sits under the sound effects
 const SOUND = { music: 2, sfx: 3 };
 try { Object.assign(SOUND, JSON.parse(localStorage.getItem('brickdrop_sound') || '{}')); } catch (e) {}
 // iPhone: "ambient" lets the player's own music (Spotify etc.) keep playing alongside the game
@@ -365,7 +369,7 @@ function initAudio(){
 }
 function applyVolumes(){
   if (!AC) return;
-  SFX_GAIN.gain.setTargetAtTime(VOL_LEVELS[SOUND.sfx], AC.currentTime, .05);
+  SFX_GAIN.gain.setTargetAtTime(VOL_LEVELS[SOUND.sfx] * SFX_BOOST, AC.currentTime, .05);
   MUSIC_GAIN.gain.setTargetAtTime(VOL_LEVELS[SOUND.music] * MUSIC_MAX, AC.currentTime, .05);
 }
 // background music: decoded once, looped forever on its own channel (keeps playing in every game state)
@@ -662,7 +666,7 @@ cv.addEventListener('pointerdown', e => {
     return;
   }
   input.dragging = true;
-  if (g.phase === 'aim') g.brick.x = clampBrickX(p.x);
+  if (g.phase === 'aim' && input.mode !== 'gyro') g.brick.x = clampBrickX(p.x);   // gyro phones steer the crane by tilting
   if (steering()){ const s = brickScreen(); input.touchA = Math.atan2(p.y - s.y, p.x - s.x); }
 });
 cv.addEventListener('pointermove', e => {
@@ -671,7 +675,7 @@ cv.addEventListener('pointermove', e => {
     if (g.phase === 'aim' && !twistMode()) g.brick.x = clampBrickX(p.x);   // twist mode moves the brick in the mousemove listener
     // (rotation while steering is handled in the document mousemove listener)
   } else if (input.dragging){
-    if (g.phase === 'aim') g.brick.x = clampBrickX(p.x);
+    if (g.phase === 'aim'){ if (input.mode !== 'gyro') g.brick.x = clampBrickX(p.x); }
     else if (steering() && input.mode === 'touch'){        // circle the finger around the brick
       const s = brickScreen(), a = Math.atan2(p.y - s.y, p.x - s.x);
       input.crank.ang += wrapPi(a - input.touchA); input.touchA = a;
@@ -962,6 +966,10 @@ function update(dt){
   if (g.phase === 'aim'){
     if (k.ArrowLeft) b.x = clampBrickX(b.x - CONFIG.keyMovePerSec * dt);
     if (k.ArrowRight) b.x = clampBrickX(b.x + CONFIG.keyMovePerSec * dt);
+    if (input.mode === 'gyro'){                                   // tilt the phone to drive the crane left / right
+      const tilt = wrap180(input.rollS - input.rollZero), mag = Math.max(0, Math.abs(tilt) - CONFIG.gyroCraneDeadzone);
+      b.x = clampBrickX(b.x + Math.sign(tilt) * Math.min(CONFIG.gyroCraneMax, mag * CONFIG.gyroCraneSpeed) * dt);
+    }
   }
   if (steering()){
     if (k.ArrowLeft) input.keyAng -= CONFIG.keyDegPerSec * dt;
@@ -1337,7 +1345,9 @@ function updateUI(){
     case 'intro': hint = 'Watch the wall — where is the slot?'; btn = 'SKIP ▶'; g.actionReady = true; break;
     case 'aim':
       hint = twistMode() ? 'Slide the mouse (in your twisted grip) to move the brick · SPACE to set'
-           : m === 'mouse' ? 'Move the mouse to pick the drop spot · click or SPACE to set' : 'Drag left / right to pick the drop spot';
+           : m === 'mouse' ? 'Move the mouse to pick the drop spot · click or SPACE to set'
+           : m === 'gyro' ? 'Tilt your phone left / right to move the crane · level it to stop'
+           : 'Drag left / right to pick the drop spot';
       btn = 'SET SPOT ✓'; g.actionReady = true; break;
     case 'tilt':
       hint = m === 'gyro' ? 'Turn your phone like a steering wheel to rotate the brick'
