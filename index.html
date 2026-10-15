@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Brick Drop</title>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet">
+<style>
+/* =====================================================================
+   1. PAGE + STAGE LAYOUT
+   ===================================================================== */
+:root{ --ink:#5a3a22; --cream:#fff6e6; --u:1px; }
+html,body{margin:0;height:100%;background:#2e2a33;overflow:hidden;touch-action:none;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  font-family:'M PLUS Rounded 1c',system-ui,sans-serif;color:var(--ink);}
+#stage{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);overflow:hidden;
+  border-radius:calc(var(--u)*18);box-shadow:0 10px 40px rgba(0,0,0,.45);}
+#game{display:block;width:100%;height:100%;}
+
+/* =====================================================================
+   2. HUD (round / score pills, tool buttons)
+   ===================================================================== */
+#hud{position:absolute;top:calc(var(--u)*14);left:calc(var(--u)*14);right:calc(var(--u)*14);
+  display:flex;justify-content:space-between;pointer-events:none;}
+.pill{background:rgba(255,246,230,.94);border:calc(var(--u)*3) solid var(--ink);border-radius:999px;
+  padding:calc(var(--u)*5) calc(var(--u)*14);font-weight:800;font-size:calc(var(--u)*15);
+  box-shadow:0 calc(var(--u)*3) 0 var(--ink);}
+#tools{position:absolute;top:calc(var(--u)*62);left:calc(var(--u)*14);display:flex;flex-direction:column;gap:calc(var(--u)*8);}
+.tool{width:calc(var(--u)*38);height:calc(var(--u)*38);border-radius:50%;border:calc(var(--u)*2.5) solid var(--ink);
+  background:var(--cream);font-size:calc(var(--u)*17);padding:0;cursor:pointer;box-shadow:0 calc(var(--u)*2.5) 0 var(--ink);}
+.tool.off{opacity:.45}
+
+/* =====================================================================
+   3. BOTTOM CONTROLS (hint + action button)
+   ===================================================================== */
+#bottom{position:absolute;left:0;right:0;bottom:calc(var(--u)*24);display:flex;flex-direction:column;
+  align-items:center;gap:calc(var(--u)*10);pointer-events:none;}
+#hint{background:rgba(90,58,34,.85);color:var(--cream);padding:calc(var(--u)*6) calc(var(--u)*14);
+  border-radius:999px;font-size:calc(var(--u)*13);font-weight:800;text-align:center;max-width:88%;}
+#hint:empty{display:none}
+.btn{pointer-events:auto;font-family:inherit;font-weight:800;font-size:calc(var(--u)*20);color:#fff;
+  background:linear-gradient(#f7b54d,#ee9530);border:calc(var(--u)*3) solid var(--ink);
+  border-radius:calc(var(--u)*18);padding:calc(var(--u)*11) calc(var(--u)*34);
+  box-shadow:0 calc(var(--u)*5) 0 var(--ink);text-shadow:0 2px 0 rgba(90,58,34,.5);cursor:pointer;}
+.btn:active{transform:translateY(calc(var(--u)*4));box-shadow:0 calc(var(--u)*1) 0 var(--ink);}
+.btn.red{background:linear-gradient(#e47a68,#c95c4b);}
+.hidden{display:none !important;}
+#toast{position:absolute;left:50%;top:calc(var(--u)*120);transform:translateX(-50%);background:var(--ink);color:var(--cream);
+  font-weight:800;font-size:calc(var(--u)*13);padding:calc(var(--u)*6) calc(var(--u)*14);border-radius:999px;
+  opacity:0;transition:opacity .25s;pointer-events:none;}
+#toast.show{opacity:1}
+
+/* =====================================================================
+   4. PANELS (title / calibration / results)
+   ===================================================================== */
+.panel{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(60,40,30,.32);}
+.card{width:84%;background:var(--cream);border:calc(var(--u)*4) solid var(--ink);border-radius:calc(var(--u)*24);
+  padding:calc(var(--u)*20) calc(var(--u)*18);text-align:center;box-shadow:0 calc(var(--u)*7) 0 var(--ink);}
+.card h1{margin:0;font-size:calc(var(--u)*48);line-height:.95;color:#c95c4b;font-weight:800;
+  text-shadow:0 calc(var(--u)*3) 0 var(--ink);letter-spacing:calc(var(--u)*1);}
+.card h2{margin:0 0 calc(var(--u)*6);font-size:calc(var(--u)*26);font-weight:800;}
+.card p{font-size:calc(var(--u)*14);line-height:1.55;margin:calc(var(--u)*10) 0;font-weight:500;}
+.card .big{font-size:calc(var(--u)*46);font-weight:800;color:#c95c4b;margin:calc(var(--u)*4) 0;}
+.card .small{font-size:calc(var(--u)*12);opacity:.75}
+.brickrow{display:flex;justify-content:center;gap:calc(var(--u)*5);margin:calc(var(--u)*12) 0;}
+.brickrow i{display:block;width:calc(var(--u)*34);height:calc(var(--u)*15);border-radius:calc(var(--u)*3);}
+.live{font-size:calc(var(--u)*22);font-weight:800;margin:calc(var(--u)*6) 0 calc(var(--u)*14);}
+.chips{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:calc(var(--u)*6);margin-top:calc(var(--u)*16);}
+.chips span{font-size:calc(var(--u)*12);font-weight:800;width:100%;}
+.chip{font-family:inherit;font-weight:800;font-size:calc(var(--u)*12);color:var(--ink);background:#fff;
+  border:calc(var(--u)*2) solid var(--ink);border-radius:999px;padding:calc(var(--u)*5) calc(var(--u)*11);cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div class="pill" id="roundPill">ROUND 1/5</div>
+    <div class="pill" id="scorePill">★ 0</div>
+  </div>
+
+  <div id="tools">
+    <button class="tool hidden" id="btnMap" title="Target map (debug)">🗺</button>
+    <button class="tool" id="btnCal" title="Re-calibrate">🎯</button>
+    <button class="tool off hidden" id="btnDbg" title="Hitboxes (debug)">🐞</button>
+  </div>
+
+  <div id="bottom">
+    <div id="hint"></div>
+    <button class="btn hidden" id="actionBtn">GO</button>
+  </div>
+  <div id="toast"></div>
+
+  <!-- TITLE -->
+  <div class="panel" id="titlePanel">
+    <div class="card">
+      <div class="brickrow"><i style="background:#a9552a"></i><i style="background:#dba43f"></i><i style="background:#b8773f"></i></div>
+      <h1><span id="kB">B</span>RICK<br><span id="kD">D</span>ROP</h1>
+      <div class="brickrow"><i style="background:#b8773f"></i><i style="background:#c95c4b"></i><i style="background:#a9552a"></i></div>
+      <p>Drop the brick from the crane and land it as close to the gap as you can.</p>
+      <p class="small">Phone: rotate like a steering wheel · PC: move the mouse in circles</p>
+      <button class="btn" id="playBtn">▶ PLAY</button>
+      <div class="chips">
+        <span>Practice</span>
+        <button class="chip" data-v="flat">Straight</button>
+        <button class="chip" data-v="slide">Slide-in</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALIBRATION -->
+  <div class="panel hidden" id="calibPanel">
+    <div class="card">
+      <h2 id="calTitle">Calibrate</h2>
+      <p id="calText"></p>
+      <div class="live" id="calLive"></div>
+      <button class="btn" id="calBtn">CALIBRATE</button>
+      <div><button class="chip hidden" id="calAlt" style="margin-top:calc(var(--u)*14)">Use left / right control instead</button></div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="panel hidden" id="overPanel">
+    <div class="card">
+      <h2>Wall complete!</h2>
+      <div class="big" id="overScore">0</div>
+      <p id="overRank"></p>
+      <p class="small" id="overBreak"></p>
+      <p class="small" id="overBest"></p>
+      <button class="btn" id="againBtn">↻ PLAY AGAIN</button>
+    </div>
+  </div>
+  <!-- MOUSE CAPTURE (shown whenever the game needs the mouse locked and doesn't have it) -->
+  <div class="panel hidden" id="lockPanel">
+    <div class="card">
+      <h2>🖱 Click to grab the mouse</h2>
+      <p id="lockText">The game holds on to the mouse so it can't leave the screen while you twist.</p>
+      <button class="btn" id="lockBtn">CLICK TO CONTINUE</button>
+      <p class="small" id="lockNote"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   1. CONFIG  — tweak gameplay feel here
+   ===================================================================== */
+const CONFIG = {
+  W: 390, H: 844,                 // logical portrait screen (19.5:9)
+  groundY: 2100,                  // world y of the ground
+  jibY: 110,                      // world y of the crane arm
+  hangY: 290,                     // world y of the hanging brick's centre
+  holeAboveGround: 230,           // how high the target slot sits above the ground
+
+  brickW: 72, brickH: 30,
+  mortar: 8,                      // mortar thickness = free gap each side of the slot
+  mmPerPx: 215 / 72,              // a real brick is ~215 mm long → used for the "mm off" readout
+
+  gravity: 950, maxFallSpeed: 1100,
+
+  // --- angle control ---
+  gyroScale: 1.0,                 // brick degrees per degree of phone "steering wheel" rotation
+  crankRadius: 60,                // touch fallback: circle your finger
+  mouseDegPerPx: 0.35,            // left/right control: brick degrees per px of mouse slide                // mouse circle control: smaller = more twitchy
+  wheelDegPerNotch: 3,            // mouse wheel fine-tune
+  twistMoveGain: 1.0,             // twist mode: how far the brick slides per px of "not-twist" mouse movement
+  keyDegPerSec: 90, keyMovePerSec: 260,
+  angleFollow: 12,                // how fast the brick follows the input angle
+
+  // --- lean pull while falling (v2: 20% weaker than v1) ---
+  driftAmp: 50.4,                 // px/s sideways pull at full lean; v1 was ≈63
+  driftFollow: 3,
+
+  // --- guided entry: a brick that's nearly lined up gets nudged into the slot and slides down it ---
+  guideNudge: 5,                  // px it can be nudged sideways to drop in (bigger = easier)
+  guideMaxDeg: 10,                // must be within this many degrees of the slot's angle
+
+  // --- slide-in wall ---
+  slideAccel: .55, slideDamp: .8, slideSnapDeg: 35,
+
+  // --- scoring: see section "12. SCORING FORMULA" ---
+
+  zoomMax: 2.6, zoomTime: .6,
+
+  rounds: 5,
+  // each stage picks one wall type from its list
+  stagePlan: [ ['flat'], ['slide'], ['classic', 'deep', 'vertical'], ['odd'], ['decoy'] ],
+  tilt: { flat: [0, 0], classic: [4, 14], deep: [3, 10], vertical: [3, 12], slide: [20, 28], odd: [3, 10], decoy: [2, 8] },   // wall tilt range (deg)
+  oddSlotDeg: [20, 50],           // angled slot: how slanted the slot is inside the wall
+  decoySlotDeg: [20, 35],         // stage 5 slots (kept a bit gentler so 3 slots fit on screen)
+  decoySpacing: 160,              // distance between the target slot and each decoy
+  minimapStages: 2,               // minimap shows on stages 1..this (debug mode: always, toggle with 🗺)
+
+  introHold: 0.9, introPan: 2.2,
+  showMinimap: true,
+  debug: false,
+};
+const W = CONFIG.W, H = CONFIG.H, G = CONFIG.groundY;
+const BW = CONFIG.brickW, BH = CONFIG.brickH, M = CONFIG.mortar;
+const CELL_W = BW + M;                      // brick + mortar, horizontal
+const ROW_H  = BH + M;                      // brick + mortar, vertical
+const HOLE_HW = BW / 2 + M;                 // half-width of a normal slot
+const TOP_Y = -BH / 2 - 3;                  // normal wall top surface (wall-local)
+const CAM_BOTTOM = G + 150 - H;
+const D2R = Math.PI / 180;
+
+const COLORS = {
+  ink: '#5a3a22', mortar: '#f0dfbf',
+  wallBricks: [ ['#a9552a', .35], ['#b8773f', .38], ['#dba43f', .17], ['#c4554a', .10] ],
+  player: '#c95c4b',
+  crane: '#f2bf3c', craneDark: '#d99f22', steel: '#5d6876',
+  frame: '#ec9a73', ground: '#e5c194', groundTop: '#d4ab78',
+};
+
+/* =====================================================================
+   2. WALL VARIATIONS (geometry in wall-local space: origin = target brick centre, y down)
+   ===================================================================== */
+const VARIANTS = {
+  flat:     { name: 'STRAIGHT WALL', sub: 'No turning needed — line it up and drop!' },
+  classic:  { name: 'TILTED WALL',   sub: 'Match the wall\'s angle and fill the gap' },
+  deep:     { name: 'DEEP GAP',      sub: 'The slot is 2 rows down — drop it straight!' },
+  vertical: { name: 'STANDING SLOT', sub: 'Turn the brick upright to fit!' },
+  slide:    { name: 'SLIDE-IN',      sub: 'Land on the slope and let it slide in' },
+  odd:      { name: 'ANGLED SLOT',   sub: 'The slot is slanted — turn the brick to match!' },
+  decoy:    { name: 'DECOY GAPS',    sub: 'Only the FLAGGED slot counts!' },
+};
+// A slot ("cut") is a rectangle centred at (cx, cy), rotated by ang, half-size hw × hh.
+// It is open towards the sky: it extends `ext` px further along its own "up" axis.
+// brickRot = how the brick lies in it (0 = along the slot, π/2 = standing up).
+function slot(o){ return Object.assign({ cx: 0, cy: 0, ang: 0, hw: HOLE_HW, hh: BH / 2, ext: 400, brickRot: 0 }, o); }
+function cutFrame(c, x, y){ const dx = x - c.cx, dy = y - c.cy, cs = Math.cos(c.ang), sn = Math.sin(c.ang); return { u: dx * cs + dy * sn, v: -dx * sn + dy * cs }; }
+function cutToLocal(c, u, v){ const cs = Math.cos(c.ang), sn = Math.sin(c.ang); return { x: c.cx + u * cs - v * sn, y: c.cy + u * sn + v * cs }; }
+function inCut(c, x, y){ const f = cutFrame(c, x, y); return Math.abs(f.u) < c.hw && f.v < c.hh && f.v > -c.hh - c.ext; }
+const randRange = ([lo, hi]) => lo + (hi - lo) * Math.random();
+function makeGeometry(variant, wallAng){
+  const classicCut = slot({});
+  const base = { variant, wallTop: TOP_Y, topRow: 0, soldier: false, adds: [], targetRot: 0, slide: false, flag: false };
+  switch (variant){
+    case 'deep':                            // shaft 2 rows deep, target at the bottom
+      return Object.assign(base, { wallTop: -2 * ROW_H - BH / 2 - 3, topRow: -2, cuts: [classicCut] });
+    case 'vertical':                        // top row of standing (soldier) bricks, one missing
+      return Object.assign(base, { wallTop: -BW / 2 - 3, soldier: true, targetRot: Math.PI / 2,
+               cuts: [slot({ hw: BH / 2 + M, hh: BW / 2, brickRot: Math.PI / 2 })] });
+    case 'odd': case 'decoy': {             // slanted slot(s) sunk into the wall
+      const decoy = variant === 'decoy';
+      const phi = (Math.random() < .5 ? -1 : 1) * randRange(decoy ? CONFIG.decoySlotDeg : CONFIG.oddSlotDeg) * D2R;
+      const deep = !decoy && Math.random() < .5;
+      const rowsAbove = deep ? 3 : 1;       // enough wall above the seat to hold the slanted slot
+      const mk = cx => slot({ cx, ang: phi });
+      const cuts = [mk(0)];
+      if (decoy) cuts.push(mk(-CONFIG.decoySpacing), mk(CONFIG.decoySpacing));
+      return Object.assign(base, { wallTop: -rowsAbove * ROW_H - BH / 2 - 3, topRow: -rowsAbove, targetRot: phi, cuts, flag: decoy });
+    }
+    case 'slide': {                         // steep slope + a raised stopper ledge on the downhill side
+      const s = Math.sign(wallAng) || 1, L = 420;
+      const ledge = s > 0 ? { x0: HOLE_HW, x1: HOLE_HW + L } : { x0: -HOLE_HW - L, x1: -HOLE_HW };
+      Object.assign(ledge, { y0: TOP_Y - ROW_H, y1: TOP_Y, rows: [-1] });
+      return Object.assign(base, { adds: [ledge], slide: true, cuts: [classicCut] });
+    }
+    default:   // 'flat' and 'classic' share the same shape (flat just has no tilt)
+      return Object.assign(base, { variant: variant || 'classic', cuts: [classicCut] });
+  }
+}
+// is this wall-local point inside solid wall?
+function isSolid(x, y){
+  const geo = g.geo;
+  let solid = y >= geo.wallTop;
+  if (!solid) for (const a of geo.adds) if (x > a.x0 && x < a.x1 && y >= a.y0) { solid = true; break; }
+  if (!solid) return false;
+  for (const c of geo.cuts) if (inCut(c, x, y)) return false;
+  return true;
+}
+// height of the wall surface at local x — only used by the slide-in wall (straight slots)
+function surf(x){
+  const geo = g.geo; let top = geo.wallTop;
+  for (const a of geo.adds) if (x > a.x0 && x < a.x1) top = Math.min(top, a.y0);
+  for (const c of geo.cuts) if (!c.ang && Math.abs(x - c.cx) < c.hw) top = c.cy + c.hh;
+  return top;
+}
+
+/* =====================================================================
+   3. UTILITIES
+   ===================================================================== */
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeInOut = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const easeOutBack = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+const wrapPi = a => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+const wrap180 = d => { while (d > 180) d -= 360; while (d < -180) d += 360; return d; };
+const wrap90 = d => { d = ((d % 180) + 180) % 180; return d >= 90 ? d - 180 : d; };   // brick looks the same every 180°
+function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function shade(hex, amt){ const n = parseInt(hex.slice(1), 16);
+  return `rgb(${clamp((n >> 16) + amt, 0, 255)},${clamp((n >> 8 & 255) + amt, 0, 255)},${clamp((n & 255) + amt, 0, 255)})`; }
+function strHash(s){ let h = 2166136261; for (const ch of s) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rrect(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+
+/* =====================================================================
+   4. CANVAS SETUP + RESIZE
+   ===================================================================== */
+const stage = document.getElementById('stage');
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+const VIEW = { scale: 1, dpr: 1 };
+const VR = { top: 0, bot: H, left: 0, right: W, z: 1 };   // visible world rect (updated each frame)
+function resize(){
+  const s = Math.min(innerWidth / W, innerHeight / H);
+  VIEW.scale = s; VIEW.dpr = Math.min(window.devicePixelRatio || 1, 3);
+  stage.style.width = W * s + 'px'; stage.style.height = H * s + 'px';
+  stage.style.setProperty('--u', s + 'px');
+  cv.width = Math.round(W * s * VIEW.dpr); cv.height = Math.round(H * s * VIEW.dpr);
+}
+addEventListener('resize', resize); addEventListener('orientationchange', () => setTimeout(resize, 200));
+resize();
+
+/* =====================================================================
+   5. AUDIO (tiny synth blips)
+   ===================================================================== */
+let AC = null;
+function initAudio(){ try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.resume) AC.resume(); } catch (e) {} }
+function tone(f, d, type = 'sine', vol = .2, f2 = null){
+  if (!AC) return; const t = AC.currentTime, o = AC.createOscillator(), gn = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+  gn.gain.setValueAtTime(vol, t); gn.gain.exponentialRampToValueAtTime(0.001, t + d);
+  o.connect(gn).connect(AC.destination); o.start(t); o.stop(t + d + .02);
+}
+const SFX = {
+  click:   () => tone(660, .08, 'triangle', .15),
+  release: () => tone(520, .3, 'sine', .12, 240),
+  thud:    () => { tone(130, .2, 'triangle', .35, 55); tone(80, .15, 'sine', .3); },
+  scrape:  () => tone(220, .25, 'sawtooth', .05, 160),
+  zoom:    () => tone(300, .4, 'sine', .08, 900),
+  ding:    () => { tone(880, .15, 'sine', .16); setTimeout(() => tone(1320, .25, 'sine', .14), 90); },
+  perfect: () => [880, 1109, 1319, 1760].forEach((f, i) => setTimeout(() => tone(f, .22, 'triangle', .13), i * 70)),
+  meh:     () => { tone(330, .18, 'triangle', .12); setTimeout(() => tone(262, .3, 'triangle', .1), 120); },
+};
+
+/* =====================================================================
+   6. ASSET: BRICK SPRITES (hand-painted look, cached)
+   ===================================================================== */
+const SPR_PAD = 4, SPR_SCALE = 3;
+const SPRITES = {};
+function makeBrickSprite(color, seed){
+  const c = document.createElement('canvas');
+  c.width = (BW + SPR_PAD * 2) * SPR_SCALE; c.height = (BH + SPR_PAD * 2) * SPR_SCALE;
+  const x = c.getContext('2d'); x.scale(SPR_SCALE, SPR_SCALE); x.translate(SPR_PAD + BW / 2, SPR_PAD + BH / 2);
+  const r = mulberry32(seed);
+  const N = 150, n = 9, a = BW / 2 - .6, b = BH / 2 - .6;      // rough rounded rectangle (superellipse + jitter)
+  x.beginPath();
+  for (let i = 0; i < N; i++){
+    const t = i / N * Math.PI * 2, cs = Math.cos(t), sn = Math.sin(t);
+    const px = a * Math.sign(cs) * Math.pow(Math.abs(cs), 2 / n) + (r() - .5) * 1.2;
+    const py = b * Math.sign(sn) * Math.pow(Math.abs(sn), 2 / n) + (r() - .5) * 1.2;
+    i ? x.lineTo(px, py) : x.moveTo(px, py);
+  }
+  x.closePath(); x.fillStyle = color; x.fill();
+  x.save(); x.clip();
+  const lg = x.createLinearGradient(0, -BH / 2, 0, BH / 2);       // soft semi-3D light
+  lg.addColorStop(0, 'rgba(255,255,255,.22)'); lg.addColorStop(.45, 'rgba(255,255,255,0)'); lg.addColorStop(1, 'rgba(70,25,0,.22)');
+  x.fillStyle = lg; x.fillRect(-BW, -BH, BW * 2, BH * 2);
+  for (let i = 0; i < 8; i++){                                     // watercolour blotches
+    x.fillStyle = r() < .5 ? 'rgba(255,255,255,.07)' : 'rgba(60,20,0,.08)';
+    x.beginPath(); x.ellipse((r() - .5) * BW, (r() - .5) * BH, 6 + r() * 12, 3 + r() * 7, r() * 3, 0, Math.PI * 2); x.fill();
+  }
+  for (let i = 0; i < 90; i++){                                    // paper speckles
+    x.fillStyle = r() < .5 ? 'rgba(255,240,220,.18)' : 'rgba(60,20,0,.16)';
+    x.beginPath(); x.arc((r() - .5) * BW, (r() - .5) * BH, .4 + r() * .8, 0, Math.PI * 2); x.fill();
+  }
+  x.restore();
+  x.globalAlpha = .55; x.strokeStyle = shade(color, -38); x.lineWidth = 1.4; x.stroke();   // fuzzy edge
+  return c;
+}
+function getSprites(color){
+  if (!SPRITES[color]){ SPRITES[color] = []; for (let i = 0; i < 6; i++) SPRITES[color].push(makeBrickSprite(color, strHash(color) + i * 977)); }
+  return SPRITES[color];
+}
+function drawSprite(c, spr, x, y, ang = 0, scale = 1){
+  c.save(); c.translate(x, y); if (ang) c.rotate(ang); if (scale !== 1) c.scale(scale, scale);
+  c.drawImage(spr, -BW / 2 - SPR_PAD, -BH / 2 - SPR_PAD, BW + SPR_PAD * 2, BH + SPR_PAD * 2); c.restore();
+}
+const PLAYER_SPR = getSprites(COLORS.player)[0];
+
+/* =====================================================================
+   7. ASSET: BRICK WALL (built per round from its geometry, drawn rotated)
+   ===================================================================== */
+const WALL_X0 = -620, WALL_Y0 = -130, WALL_W = 1240, WALL_H = 760;
+function pickWallColor(r){ let v = r(); for (const [c, w] of COLORS.wallBricks){ if ((v -= w) <= 0) return c; } return COLORS.wallBricks[0][0]; }
+function buildWall(geo, seed){
+  const S = 2, c = document.createElement('canvas');
+  c.width = WALL_W * S; c.height = WALL_H * S;
+  const x = c.getContext('2d'); x.scale(S, S); x.translate(-WALL_X0, -WALL_Y0);
+  const r = mulberry32(seed);
+  const brick = (bx, by, rot) => { const sp = getSprites(pickWallColor(r)); drawSprite(x, sp[(r() * sp.length) | 0], bx, by, rot + (r() - .5) * .02); };
+  const rowOff = row => (Math.abs(row) % 2) ? CELL_W / 2 : 0;
+
+  // 7a. mortar body (rough top) + raised ledges
+  x.fillStyle = COLORS.mortar; x.beginPath(); x.moveTo(WALL_X0, geo.wallTop);
+  for (let px = WALL_X0; px <= WALL_X0 + WALL_W; px += 6) x.lineTo(px, geo.wallTop + (r() - .5) * 1.6);
+  x.lineTo(WALL_X0 + WALL_W, WALL_Y0 + WALL_H); x.lineTo(WALL_X0, WALL_Y0 + WALL_H); x.closePath(); x.fill();
+  for (const a of geo.adds) x.fillRect(a.x0, a.y0, a.x1 - a.x0, a.y1 - a.y0 + 3);
+  for (let i = 0; i < 1500; i++){
+    x.fillStyle = r() < .5 ? 'rgba(255,255,255,.35)' : 'rgba(150,110,60,.12)';
+    x.fillRect(WALL_X0 + r() * WALL_W, geo.wallTop + 2 + r() * (WALL_H - 140), 1.2, 1.2);
+  }
+  // 7b. bricks
+  if (geo.soldier){
+    const cw = BH + M;
+    for (let k = -17; k <= 17; k++) brick(k * cw, 0, Math.PI / 2);          // standing row
+    const y0 = BW / 2 + M + BH / 2;
+    for (let row = 0; row < 14; row++) for (let k = -9; k <= 9; k++) brick(k * CELL_W + rowOff(row + 1), y0 + row * ROW_H, 0);
+  } else {
+    for (let row = geo.topRow; row < 16; row++) for (let k = -9; k <= 9; k++) brick(k * CELL_W + rowOff(row), row * ROW_H, 0);
+  }
+  for (const a of geo.adds){
+    x.save(); x.beginPath(); x.rect(a.x0, a.y0, a.x1 - a.x0, a.y1 - a.y0 + 3); x.clip();
+    for (const row of a.rows) for (let k = -9; k <= 9; k++) brick(k * CELL_W + rowOff(row), row * ROW_H, 0);
+    x.restore();
+  }
+  // 7c. cut the slot(s) out, then shade the inside
+  x.globalCompositeOperation = 'destination-out'; x.fillStyle = '#000';   // solid erase so nothing is left in the gap
+  for (const c of geo.cuts){ x.save(); x.translate(c.cx, c.cy); x.rotate(c.ang); x.fillRect(-c.hw, -c.hh - c.ext, c.hw * 2, c.hh * 2 + c.ext); x.restore(); }
+  x.globalCompositeOperation = 'source-over';
+  x.save(); x.beginPath(); x.rect(WALL_X0, geo.wallTop, WALL_W, WALL_H); for (const a of geo.adds) x.rect(a.x0, a.y0, a.x1 - a.x0, a.y1 - a.y0 + 3); x.clip();
+  for (const c of geo.cuts){            // shading inside the slot (clipped to the wall)
+    x.save(); x.translate(c.cx, c.cy); x.rotate(c.ang);
+    x.fillStyle = 'rgba(120,80,40,.22)'; x.fillRect(-c.hw, c.hh - 1, c.hw * 2, 4);
+    x.fillStyle = 'rgba(90,40,10,.12)'; x.fillRect(-c.hw - 3, -c.hh - c.ext, 3, c.hh * 2 + c.ext); x.fillRect(c.hw, -c.hh - c.ext, 3, c.hh * 2 + c.ext);
+    x.restore();
+  }
+  x.restore();
+  return c;
+}
+
+/* =====================================================================
+   8. SCENERY DATA (construction site)
+   ===================================================================== */
+const SR = mulberry32(42);
+const CLOUDS = []; for (let i = 0; i < 16; i++) CLOUDS.push({ x: SR() * (W + 200), y: 40 + SR() * (G - 650), s: .7 + SR() * .7, spd: 5 + SR() * 10 });
+const CITY = []; { let x = -20; while (x < W + 20){ const w = 34 + SR() * 40; CITY.push({ x, w, h: 140 + SR() * 260, c: ['#cbd3ec', '#bcc6e6', '#d6d0ec'][(SR() * 3) | 0] }); x += w + 4 + SR() * 10; } }
+const PEBBLES = []; for (let i = 0; i < 60; i++) PEBBLES.push({ x: SR() * W, y: G + 14 + SR() * 200, r: 1.5 + SR() * 3 });
+let SKY = null;
+
+/* =====================================================================
+   9. INPUT (pointer / mouse-circle crank / wheel / keyboard / gyroscope)
+   ===================================================================== */
+const input = {
+  mode: 'mouse',               // 'gyro' | 'touch' | 'mouse'
+  mouseStyle: 'twist',         // 'twist' (calibrated mouse twist) | 'slide' (v1: slide left/right)
+  slideAng: 0,                 // degrees, from left/right sliding
+  twist: { ang: 0 },           // degrees, from calibrated twist
+  cal: { state: 'idle', sx: 0, sy: 0, ux: 1, uy: 0, pxPer90: 0 },
+  px: null, dragging: false, touchA: 0,
+  crank: { ang: 0, a: 0, vx: CONFIG.crankRadius, vy: 0 },   // circle-motion dial (radians, unbounded)
+  keyAng: 0,
+  roll: 0, rollRaw: null, rollS: 0, rollZero: 0, gyroSeen: false,
+  keys: {},
+};
+const isCoarse = matchMedia('(pointer: coarse)').matches;
+
+function toLogical(e){ const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; }
+const clampBrickX = x => clamp(x, BW / 2 + 8, W - BW / 2 - 8);
+const steering = () => g.phase === 'tilt' || g.phase === 'fall';
+
+function resetCrank(){ Object.assign(input.crank, { ang: 0, a: 0, vx: CONFIG.crankRadius, vy: 0 }); input.twist.ang = 0; input.slideAng = 0; input.keyAng = 0; }
+// Calibrated twist: during calibration we record which way (and how far) the mouse slides when you twist it 90°.
+// In play, movement along that same direction is turned back into degrees.
+function twistMode(){ return input.mode === 'mouse' && input.mouseStyle === 'twist' && input.cal.pxPer90 > 0; }
+function twistMove(dx, dy){
+  const c = input.cal; if (!c.pxPer90) return;
+  input.twist.ang += (dx * c.ux + dy * c.uy) / c.pxPer90 * 90;
+}
+// mouse delta: movementX/Y when available (needed under pointer lock), else derived from cursor position
+let lastCX = null, lastCY = null;
+function mouseDelta(e){
+  let mx = e.movementX || 0, my = e.movementY || 0;
+  if (!mx && !my && lastCX != null){ mx = e.clientX - lastCX; my = e.clientY - lastCY; }
+  lastCX = e.clientX; lastCY = e.clientY;
+  return [mx, my];
+}
+document.addEventListener('mousemove', e => {
+  const [mx, my] = mouseDelta(e);
+  if (Math.abs(mx) > 120 || Math.abs(my) > 120) return;            // ignore pointer-lock jump spikes
+  // Twist mode, choosing the drop spot: use only the movement at right angles to the twist direction,
+  // so the brick follows the mouse in its twisted grip (e.g. after a 90° twist, up / down = left / right).
+  if (twistMode() && g.phase === 'aim'){
+    const c = input.cal, along = my * c.ux - mx * c.uy;        // component along p = u rotated +90° (moving right → brick right)
+    g.brick.x = clampBrickX(g.brick.x + along / VIEW.scale * CONFIG.twistMoveGain);
+  }
+  if (input.mode === 'mouse' && steering() && !(g.phase === 'tilt' && g.t < .12)){
+    if (input.mouseStyle === 'twist') twistMove(mx, my); else input.slideAng += mx * CONFIG.mouseDegPerPx;
+  }
+  const c = input.cal; if (c.state !== 'measuring') return;
+  c.sx += mx; c.sy += my;
+  calLive.textContent = `measured: ${Math.round(Math.hypot(c.sx, c.sy))} px`;
+});
+// Mouse circles: a virtual knob is dragged by the mouse's movement and kept on a circle.
+// Moving in a loop turns the knob a full 360°. Rest = knob pointing right = brick flat.
+function crankMove(dx, dy){
+  const c = input.crank; c.vx += dx; c.vy += dy;
+  const a = Math.atan2(c.vy, c.vx); c.ang += wrapPi(a - c.a); c.a = a;
+  const len = Math.hypot(c.vx, c.vy) || 1; c.vx = c.vx / len * CONFIG.crankRadius; c.vy = c.vy / len * CONFIG.crankRadius;
+}
+function brickScreen(){ return { x: g.brick.x, y: g.brick.y - g.cam.y }; }
+
+cv.addEventListener('pointerdown', e => {
+  const p = toLogical(e); input.px = p.x;
+  if (input.cal.state === 'measuring'){ finishTwistCal(); return; }   // click while pointer-locked = DONE
+  if (e.pointerType === 'mouse'){
+    if (twistMode() && !document.pointerLockElement && g.phase !== 'title') lockPointer();   // re-grab after Esc
+    if (['intro', 'aim', 'tilt', 'done'].includes(g.phase) && g.actionReady) confirmAction();
+    return;
+  }
+  input.dragging = true;
+  if (g.phase === 'aim') g.brick.x = clampBrickX(p.x);
+  if (steering()){ const s = brickScreen(); input.touchA = Math.atan2(p.y - s.y, p.x - s.x); }
+});
+cv.addEventListener('pointermove', e => {
+  const p = toLogical(e); input.px = p.x;
+  if (e.pointerType === 'mouse'){
+    if (g.phase === 'aim' && !twistMode()) g.brick.x = clampBrickX(p.x);   // twist mode moves the brick in the mousemove listener
+    // (rotation while steering is handled in the document mousemove listener)
+  } else if (input.dragging){
+    if (g.phase === 'aim') g.brick.x = clampBrickX(p.x);
+    else if (steering() && input.mode === 'touch'){        // circle the finger around the brick
+      const s = brickScreen(), a = Math.atan2(p.y - s.y, p.x - s.x);
+      input.crank.ang += wrapPi(a - input.touchA); input.touchA = a;
+    }
+  }
+});
+addEventListener('pointerup', () => input.dragging = false);
+addEventListener('pointercancel', () => input.dragging = false);
+cv.addEventListener('wheel', e => { if (steering()){ e.preventDefault(); input.keyAng += Math.sign(e.deltaY) * CONFIG.wheelDegPerNotch; } }, { passive: false });
+document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
+addEventListener('keydown', e => {
+  input.keys[e.key] = true;
+  const confirmKey = e.key === ' ' || e.key === 'Enter';
+  if (confirmKey && !$('lockPanel').classList.contains('hidden')){ e.preventDefault(); lockPointer(); return; }   // Space = grab mouse
+  if (confirmKey && document.activeElement && document.activeElement.tagName === 'BUTTON') document.activeElement.blur();   // stop Space also "clicking" a button
+  if (confirmKey && !calibPanel.classList.contains('hidden') && input.mode === 'mouse' && input.mouseStyle === 'twist'){
+    e.preventDefault(); SFX.click();
+    if (input.cal.state === 'ready') startTwistMeasure(); else if (input.cal.state === 'measuring') finishTwistCal();
+    return;
+  }
+  if (confirmKey && e.repeat) { e.preventDefault(); return; }      // holding Space won't set + drop in one go
+  if (confirmKey && g.actionReady){ e.preventDefault(); confirmAction(); }
+});
+addEventListener('keyup', e => input.keys[e.key] = false);
+
+// The game "wants" the lock from calibration START onwards (twist mode) and while steering (left/right mode).
+// If the browser refuses or the lock is lost (Esc, alt-tab), a "click to grab the mouse" screen pauses the game.
+function lockPointer(){
+  input.wantLock = true;
+  if (!cv.requestPointerLock){ onLockFail(); return; }
+  try { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => onLockFail()); }
+  catch (e) { onLockFail(); }
+}
+function unlockPointer(){ input.wantLock = false; try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {} }
+let lockFails = 0;
+function showLockPanel(text){
+  $('lockText').textContent = text; $('lockPanel').classList.remove('hidden'); g.paused = true;
+}
+function hideLockPanel(){ $('lockPanel').classList.add('hidden'); g.paused = false; }
+function onLockFail(){
+  if (!input.wantLock) return;
+  lockFails++;
+  showLockPanel('The browser didn\'t let the game grab the mouse. Click below to try again.');
+  $('lockNote').textContent = lockFails >= 2
+    ? 'Still not working? This preview window may block it — open the game in its own browser tab (e.g. your GitHub Pages link). Arrow keys + Space also work.'
+    : '';
+}
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement === cv){ lockFails = 0; $('lockNote').textContent = ''; hideLockPanel(); }
+  else if (input.wantLock) showLockPanel('The mouse was released (Esc or switching windows). Click to grab it again and carry on.');
+});
+document.addEventListener('pointerlockerror', onLockFail);
+
+// Phone as a steering wheel: work out the screen-plane rotation from beta/gamma (full 360°).
+function onOrientation(e){
+  if (e.gamma == null || e.beta == null) return;
+  input.gyroSeen = true;
+  const b = e.beta * D2R, gm = e.gamma * D2R;
+  const ux = Math.cos(b) * Math.sin(gm), uy = Math.sin(b), h = Math.hypot(ux, uy);
+  const roll = Math.atan2(ux, uy) / D2R;
+  const w = clamp((h - .15) / .25, 0, 1);                  // phone nearly flat → fall back to plain left/right tilt
+  const raw = e.gamma + wrap180(roll - e.gamma) * w;
+  if (input.rollRaw == null){ input.roll = raw; input.rollS = raw; }
+  else input.roll += wrap180(raw - input.rollRaw);
+  input.rollRaw = raw;
+}
+async function enableGyro(){
+  try {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+      const res = await DeviceOrientationEvent.requestPermission();   // iOS needs a tap for this
+      if (res !== 'granted') return false;
+    }
+    addEventListener('deviceorientation', onOrientation);
+    return true;
+  } catch (err){ return false; }
+}
+function targetAngleDeg(){
+  let a = input.keyAng;
+  if (input.mode === 'gyro') a += (input.rollS - input.rollZero) * CONFIG.gyroScale;
+  else if (input.mode === 'mouse') a += input.mouseStyle === 'twist' ? input.twist.ang : input.slideAng;
+  else a += input.crank.ang / D2R;
+  return a;
+}
+
+/* =====================================================================
+   10. GAME STATE + ROUND FLOW
+   ===================================================================== */
+const g = {
+  phase: 'title', t: 0, round: 0, total: 0, scores: [], forced: null,
+  wall: { x: W / 2, y: G - CONFIG.holeAboveGround, ang: 0, canvas: null },
+  geo: null,
+  brick: { x: W / 2, y: CONFIG.hangY, ang: 0, vx: 0, vy: 0 },
+  trolleyX: W / 2, attached: true,
+  cam: { y: 0 }, shake: 0,
+  zoom: { k: 0, fx: W / 2, fy: 0, Z: 1 },
+  sl: null, gd: null, meas: null,
+  popup: null, banner: null, particles: [], actionReady: false, time: 0,
+};
+
+function shuffle(a){ a = a.slice(); for (let i = a.length - 1; i > 0; i--){ const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function buildPlan(){
+  if (g.forced) return Array(CONFIG.rounds).fill(g.forced);
+  const plan = [];
+  for (let i = 0; i < CONFIG.rounds; i++){ const opts = CONFIG.stagePlan[Math.min(i, CONFIG.stagePlan.length - 1)]; plan.push(opts[(Math.random() * opts.length) | 0]); }
+  return plan;
+}
+function pickVariant(round){ return (g.plan && g.plan[round - 1]) || 'flat'; }
+function setupWall(round){
+  const variant = pickVariant(round);
+  const [lo, hi] = CONFIG.tilt[variant], sign = Math.random() < .5 ? -1 : 1;
+  g.wall.ang = sign * (lo + (hi - lo) * Math.random()) * D2R;
+  if (variant === 'slide') g.wall.x = sign > 0 ? 240 + Math.random() * 50 : 100 + Math.random() * 50;   // room uphill to land
+  else if (variant === 'decoy') g.wall.x = 180 + Math.random() * 30;   // keeps all 3 slots roughly on screen
+  else if (variant === 'odd') g.wall.x = 140 + Math.random() * 110;
+  else g.wall.x = 120 + Math.random() * 150;
+  g.wall.y = G - CONFIG.holeAboveGround;
+  g.geo = makeGeometry(variant, g.wall.ang);
+  g.wall.canvas = buildWall(g.geo, (Math.random() * 1e9) | 0);
+}
+function resetBrick(){
+  Object.assign(g.brick, { x: W / 2, y: CONFIG.hangY, ang: 0, vx: 0, vy: 0 });
+  g.trolleyX = W / 2; g.attached = true; g.sl = null; g.meas = null; g.zoom.k = 0;
+  resetCrank();
+}
+function startGame(){
+  g.plan = buildPlan();
+  g.round = 0; g.total = 0; g.scores = [];
+  document.getElementById('overPanel').classList.add('hidden');
+  nextRound();
+}
+function nextRound(){
+  g.round++; g.popup = null;
+  setupWall(g.round); resetBrick();
+  g.cam.y = CAM_BOTTOM;
+  const v = VARIANTS[g.geo.variant];
+  g.banner = { title: `ROUND ${g.round}`, sub: `${v.name} — ${v.sub}`, t: 0 };
+  updateHUD(); setPhase('intro');
+}
+function setPhase(p){ g.phase = p; g.t = 0; updateUI(); }
+
+function confirmAction(){
+  switch (g.phase){
+    case 'intro': g.cam.y = 0; g.banner = null; setPhase('aim'); break;
+    case 'aim':
+      SFX.click(); resetCrank();
+      if (input.mode === 'mouse') lockPointer();            // keeps the cursor from leaving while you circle
+      setPhase('tilt'); break;
+    case 'tilt':
+      SFX.release(); g.attached = false; g.brick.vx = 0; g.brick.vy = 0; setPhase('fall'); break;
+    case 'done':
+      SFX.click();
+      if (g.round >= CONFIG.rounds) gameOver(); else nextRound();
+      break;
+  }
+}
+
+/* =====================================================================
+   11. COLLISION (brick outline vs wall surface) + LANDING
+   ===================================================================== */
+const SAMPLES = [];
+for (let i = 0; i <= 18; i++){ const x = -BW / 2 + BW * i / 18; SAMPLES.push([x, -BH / 2], [x, BH / 2]); }
+for (let j = 1; j < 8; j++){ const y = -BH / 2 + BH * j / 8; SAMPLES.push([-BW / 2, y], [BW / 2, y]); }
+
+function toLocal(x, y){ const dx = x - g.wall.x, dy = y - g.wall.y, c = Math.cos(g.wall.ang), s = Math.sin(g.wall.ang);
+  return { x: dx * c + dy * s, y: -dx * s + dy * c }; }
+function toWorld(lx, ly){ const c = Math.cos(g.wall.ang), s = Math.sin(g.wall.ang);
+  return { x: g.wall.x + lx * c - ly * s, y: g.wall.y + lx * s + ly * c }; }
+
+function touching(){
+  const b = g.brick, L = toLocal(b.x, b.y), rel = b.ang - g.wall.ang, c = Math.cos(rel), s = Math.sin(rel);
+  for (const [px, py] of SAMPLES){
+    const X = L.x + px * c - py * s, Y = L.y + px * s + py * c;
+    if (isSolid(X, Y)) return true;
+  }
+  return false;
+}
+function onLand(){
+  if (!twistMode()) unlockPointer();          // twist mode keeps the mouse for the whole game
+  SFX.thud(); g.shake = 5; spawnDust(g.brick.x, g.brick.y + BH / 2, 10);
+  const b = g.brick, L = toLocal(b.x, b.y), rel = b.ang - g.wall.ang;
+  // guided entry: nearly lined up with ANY slot (decoys too) → nudged in, slides down the slot's own axis
+  let best = null;
+  for (const c of g.geo.cuts){
+    const relC = rel - c.ang;
+    if (Math.abs(wrap90((relC - c.brickRot) / D2R)) >= CONFIG.guideMaxDeg) continue;
+    const hwP = BW / 2 * Math.abs(Math.cos(relC)) + BH / 2 * Math.abs(Math.sin(relC));
+    const hhP = BW / 2 * Math.abs(Math.sin(relC)) + BH / 2 * Math.abs(Math.cos(relC));
+    if (hwP > c.hw) continue;
+    const f = cutFrame(c, L.x, L.y), tu = clamp(f.u, -(c.hw - hwP), c.hw - hwP), off = Math.abs(f.u - tu);
+    if (off <= CONFIG.guideNudge && (!best || off < best.off)) best = { c, u: f.u, tu, v: f.v, rest: c.hh - hhP, off };
+  }
+  if (best){
+    g.gd = { c: best.c, u: best.u, tu: best.tu, v: best.v, vy: 120, rest: best.rest, rel };
+    setPhase('guided'); return;
+  }
+  const relFlat = Math.round(rel / Math.PI) * Math.PI;
+  if (g.geo.slide && Math.abs(rel - relFlat) / D2R < CONFIG.slideSnapDeg && L.y < -10){
+    const c = Math.cos(g.wall.ang), s = Math.sin(g.wall.ang);
+    g.sl = { lx: L.x, ly: L.y, vx: (b.vx * c + b.vy * s) * .25, vy: 0, rel0: rel, relT: relFlat, t: 0, still: 0 };
+    SFX.scrape(); setPhase('slide');
+  } else startMeasure();
+}
+// lowest resting centre-y for a flat brick at local x
+function restY(lx){ let m = Infinity; for (let x = lx - BW / 2 + 1; x <= lx + BW / 2 - 1; x += 2) m = Math.min(m, surf(x)); return m - BH / 2; }
+
+/* =====================================================================
+   12. SCORING (stick → zoom → measure centre distance + angle)
+   ===================================================================== */
+/* ---------------------------------------------------------------------
+   12a. SCORING FORMULA  ← edit this to change how scores are worked out
+   Inputs:  mm  = distance between brick centre and slot centre (millimetres, real brick = 215 mm long)
+            deg = angle difference between brick and slot (0–90°)
+   --------------------------------------------------------------------- */
+const SCORE = {
+  // distance part: full marks up to perfectMm, falls in a straight line to 0 at zeroMm
+  perfectMm: 0,    zeroMm: 580,
+  // angle part: full marks up to perfectDeg, falls in a straight line to 0 at zeroDeg
+  perfectDeg: 0,   zeroDeg: 45,
+  // how the two parts combine:
+  //  'multiply' → 100 × distPart × anglePart   (both must be good — current, strict)
+  //  'add'      → distWeight × distPart + angWeight × anglePart   (errors don't compound — gentler)
+  combine: 'multiply',
+  distWeight: 50,  angWeight: 50,          // only used by 'add' (should total 100)
+  // grade names (minimum score for each)
+  grades: [ [95, 'PERFECT!', '#ffcf3a'], [80, 'GREAT!', '#8fd36b'], [60, 'GOOD', '#7cc4f2'], [30, 'OK', '#f2a3b8'], [0, 'OOPS', '#e47a68'] ],
+};
+function partScore(v, perfect, zero){ return v <= perfect ? 1 : clamp(1 - (v - perfect) / (zero - perfect), 0, 1); }
+function calcScore(mm, deg){
+  const distPart = partScore(mm, SCORE.perfectMm, SCORE.zeroMm);
+  const angPart  = partScore(Math.abs(deg), SCORE.perfectDeg, SCORE.zeroDeg);
+  const raw = SCORE.combine === 'add' ? SCORE.distWeight * distPart + SCORE.angWeight * angPart : 100 * distPart * angPart;
+  return Math.round(clamp(raw, 0, 100));
+}
+function gradeFor(score){ return SCORE.grades.find(gr => score >= gr[0]); }
+
+/* 12b. measuring the landed brick */
+function startMeasure(){
+  const b = g.brick; b.vx = b.vy = 0;
+  const L = toLocal(b.x, b.y), d = Math.hypot(L.x, L.y);
+  const errDeg = wrap90((b.ang - g.wall.ang - g.geo.targetRot) / D2R);
+  const mm = Math.round(d * CONFIG.mmPerPx);
+  const score = calcScore(mm, errDeg);
+  g.meas = { t: 0, d, mm, err: errDeg, score, shown: false };
+  const dx = b.x - g.wall.x, dy = b.y - g.wall.y;
+  g.zoom.fx = (b.x + g.wall.x) / 2; g.zoom.fy = (b.y + g.wall.y) / 2;
+  g.zoom.Z = clamp(Math.min(CONFIG.zoomMax, W * .6 / (Math.abs(dx) + 100), H * .4 / (Math.abs(dy) + 100)), 1, CONFIG.zoomMax);
+  SFX.zoom(); setPhase('measure');
+}
+function finishMeasure(){
+  const m = g.meas; m.shown = true;
+  g.scores.push(m.score); g.total += m.score; updateHUD();
+  const s = m.score;
+  const grade = gradeFor(s);
+  g.popup = { title: grade[1], color: grade[2], sub: `+${s}   ·   ${m.mm} mm off  ·  ${Math.abs(m.err).toFixed(1)}° off`, t: 0 };
+  if (s >= 95){ SFX.perfect(); spawnConfetti(g.brick.x, g.brick.y - 10); } else if (s >= 60) SFX.ding(); else SFX.meh();
+  setPhase('done');
+}
+
+/* =====================================================================
+   13. PARTICLES
+   ===================================================================== */
+function spawnDust(x, y, n){
+  for (let i = 0; i < n; i++) g.particles.push({ type: 'dust', x: x + (Math.random() - .5) * 60, y, vx: (Math.random() - .5) * 120,
+    vy: -20 - Math.random() * 60, r: 4 + Math.random() * 6, life: 1, decay: 1.4 + Math.random(), grav: 40 });
+}
+function spawnConfetti(x, y){
+  const cols = ['#ffcf3a', '#f2a3b8', '#8fd36b', '#7cc4f2', '#e47a68'];
+  for (let i = 0; i < 40; i++) g.particles.push({ type: 'conf', x, y, vx: (Math.random() - .5) * 200, vy: -150 - Math.random() * 150,
+    r: 2.5 + Math.random() * 2, life: 1, decay: .6, grav: 350, rot: Math.random() * 6, vr: (Math.random() - .5) * 12, c: cols[i % cols.length] });
+}
+function updateParticles(dt){
+  for (const p of g.particles){ p.vy += p.grav * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= p.decay * dt; if (p.vr) p.rot += p.vr * dt; if (p.type === 'dust') p.r += 10 * dt; }
+  g.particles = g.particles.filter(p => p.life > 0);
+}
+
+/* =====================================================================
+   14. UPDATE (per frame)
+   ===================================================================== */
+function update(dt){
+  g.t += dt; g.time += dt;
+  const b = g.brick, k = input.keys;
+  input.rollS += (input.roll - input.rollS) * Math.min(1, dt * 15);
+
+  if (g.phase === 'aim'){
+    if (k.ArrowLeft) b.x = clampBrickX(b.x - CONFIG.keyMovePerSec * dt);
+    if (k.ArrowRight) b.x = clampBrickX(b.x + CONFIG.keyMovePerSec * dt);
+  }
+  if (steering()){
+    if (k.ArrowLeft) input.keyAng -= CONFIG.keyDegPerSec * dt;
+    if (k.ArrowRight) input.keyAng += CONFIG.keyDegPerSec * dt;
+  }
+  const followAngle = deg => { b.ang += (deg * D2R - b.ang) * Math.min(1, dt * CONFIG.angleFollow); };
+
+  switch (g.phase){
+    case 'title':
+      g.cam.y = lerp(0, CAM_BOTTOM, (Math.sin(g.time * .25) + 1) / 2);
+      break;
+    case 'intro': {
+      const p = clamp((g.t - CONFIG.introHold) / CONFIG.introPan, 0, 1);
+      g.cam.y = lerp(CAM_BOTTOM, 0, easeInOut(p));
+      if (p >= 1){ g.banner = null; setPhase('aim'); }
+      break; }
+    case 'aim':
+      followAngle(0); g.trolleyX = b.x; b.y = CONFIG.hangY + Math.sin(g.time * 2) * 2;
+      g.cam.y = lerp(g.cam.y, 0, Math.min(1, dt * 6));
+      break;
+    case 'tilt':
+      followAngle(targetAngleDeg()); b.y = CONFIG.hangY + Math.sin(g.time * 2) * 2;
+      g.cam.y = lerp(g.cam.y, 0, Math.min(1, dt * 6));
+      break;
+    case 'fall': {
+      followAngle(targetAngleDeg());
+      const tvx = Math.sin(2 * b.ang) * CONFIG.driftAmp;        // leaning pulls sideways (0 when flat or upright)
+      b.vx += (tvx - b.vx) * Math.min(1, dt * CONFIG.driftFollow);
+      b.vy = Math.min(b.vy + CONFIG.gravity * dt, CONFIG.maxFallSpeed);
+      const dx = b.vx * dt, dy = b.vy * dt, n = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 1.5));
+      for (let i = 0; i < n; i++){                               // small sub-steps so it sticks exactly on contact
+        const px = b.x, py = b.y;
+        b.x = clamp(b.x + dx / n, BW / 2, W - BW / 2); b.y += dy / n;
+        if (touching()){ b.x = px; b.y = py; onLand(); break; }
+      }
+      if (g.phase === 'fall') g.cam.y = lerp(g.cam.y, clamp(b.y - H * .38, 0, CAM_BOTTOM), Math.min(1, dt * 8));
+      break; }
+    case 'slide': {
+      const s = g.sl; s.t += dt;
+      const rel = lerp(s.rel0, s.relT, Math.min(1, s.t / .15));
+      const cut = g.geo.cuts[0];
+      const inCut = s.lx - BW / 2 >= cut.cx - cut.hw - .5 && s.lx + BW / 2 <= cut.cx + cut.hw + .5;
+      const sinA = Math.sin(g.wall.ang), cosA = Math.cos(g.wall.ang);
+      if (!inCut){ s.vx += CONFIG.gravity * sinA * CONFIG.slideAccel * dt; s.vx *= Math.max(0, 1 - CONFIG.slideDamp * dt); }
+      else { s.vx *= Math.max(0, 1 - 8 * dt); s.lx += (0 - s.lx) * Math.min(1, dt * 5); }   // settles into the mortar bed
+      const nl = s.lx + s.vx * dt;
+      if (restY(nl) < s.ly - 2) s.vx = 0; else s.lx = nl;       // hit a step → stop
+      const r = restY(s.lx);
+      if (s.ly < r){ s.vy += CONFIG.gravity * cosA * dt; s.ly = Math.min(r, s.ly + s.vy * dt); if (s.ly >= r) s.vy = 0; }
+      else { s.ly = r; s.vy = 0; }
+      const w = toWorld(s.lx, s.ly); b.x = w.x; b.y = w.y; b.ang = g.wall.ang + rel;
+      if (s.ly >= r - .5 && Math.abs(s.vx) < 6 && s.t > .35) s.still += dt; else s.still = 0;
+      g.cam.y = lerp(g.cam.y, CAM_BOTTOM, Math.min(1, dt * 6));
+      if (s.still > .2 || Math.abs(s.lx) > 330) startMeasure();
+      break; }
+    case 'guided': {                                            // slides down the slot along the wall's axis
+      const d = g.gd;
+      d.u += (d.tu - d.u) * Math.min(1, dt * 14);
+      d.vy += CONFIG.gravity * .7 * dt; d.v = Math.min(d.rest, d.v + d.vy * dt);
+      const l = cutToLocal(d.c, d.u, d.v), w = toWorld(l.x, l.y); b.x = w.x; b.y = w.y; b.ang = g.wall.ang + d.rel;
+      g.cam.y = lerp(g.cam.y, CAM_BOTTOM, Math.min(1, dt * 6));
+      if (d.v >= d.rest && Math.abs(d.u - d.tu) < .5){ SFX.thud(); spawnDust(b.x, b.y + BH / 2, 6); startMeasure(); }
+      break; }
+    case 'measure':
+      g.meas.t += dt; g.zoom.k = easeInOut(Math.min(1, g.meas.t / CONFIG.zoomTime));
+      g.cam.y = lerp(g.cam.y, CAM_BOTTOM, Math.min(1, dt * 6));
+      if (g.meas.t > 1.35) finishMeasure();
+      break;
+    case 'done':
+      if (g.meas) g.meas.t += dt;
+      if (!g.actionReady && g.t > .6){ g.actionReady = true; updateUI(); }
+      break;
+  }
+  updateParticles(dt);
+  g.shake = Math.max(0, g.shake - dt * 30);
+  if (g.popup) g.popup.t += dt;
+  if (g.banner) g.banner.t += dt;
+  if (!calibPanel.classList.contains('hidden') && input.mode === 'gyro')
+    calLive.textContent = `rotation: ${Math.round(wrap180(input.rollS))}°`;
+}
+
+/* =====================================================================
+   15. RENDER — world layers
+   ===================================================================== */
+function drawSky(){
+  if (!SKY){ SKY = ctx.createLinearGradient(0, 0, 0, G);
+    SKY.addColorStop(0, '#9fd3f7'); SKY.addColorStop(.5, '#c6e7fb'); SKY.addColorStop(.85, '#eaf4f6'); SKY.addColorStop(1, '#fde5c9'); }
+  ctx.fillStyle = SKY; ctx.fillRect(VR.left - 40, VR.top - 40, VR.right - VR.left + 80, VR.bot - VR.top + 80);
+}
+function drawClouds(){
+  for (const c of CLOUDS){
+    if (c.y < VR.top - 80 || c.y > VR.bot + 80) continue;
+    const x = ((c.x + g.time * c.spd) % (W + 200)) - 100, s = c.s;
+    ctx.fillStyle = 'rgba(170,205,235,.35)'; ctx.beginPath(); ctx.ellipse(x + 26 * s, c.y + 12 * s, 46 * s, 10 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.95)';
+    for (const [ox, oy, r] of [[0, 0, 20], [22, -10, 26], [48, 0, 19], [26, 6, 22]]){ ctx.beginPath(); ctx.arc(x + ox * s, c.y + oy * s, r * s, 0, Math.PI * 2); ctx.fill(); }
+  }
+}
+function drawCity(){
+  if (VR.bot < G - 420) return;
+  for (const b of CITY){
+    ctx.fillStyle = b.c; rrect(ctx, b.x, G - b.h, b.w, b.h + 10, 4); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.45)';
+    for (let wy = G - b.h + 12; wy < G - 20; wy += 18) for (let wx = b.x + 7; wx < b.x + b.w - 8; wx += 12) ctx.fillRect(wx, wy, 5, 8);
+  }
+}
+function drawFrame(){   // building under construction (right side)
+  if (VR.bot < G - 620) return;
+  const top = G - 560;
+  ctx.fillStyle = COLORS.frame;
+  for (let x = 268; x <= 448; x += 58) ctx.fillRect(x, top, 9, G - top);
+  for (let y = top; y < G; y += 93){ ctx.fillRect(262, y, 200, 9); ctx.fillStyle = 'rgba(120,50,20,.25)'; ctx.fillRect(262, y + 7, 200, 2); ctx.fillStyle = COLORS.frame; }
+  ctx.strokeStyle = '#a9b2c0'; ctx.lineWidth = 3;
+  for (let x = 250; x < 470; x += 46){ ctx.beginPath(); ctx.moveTo(x, top + 60); ctx.lineTo(x, G); ctx.stroke(); }
+  ctx.fillStyle = '#d9b27c';
+  for (let y = top + 110; y < G - 20; y += 93) ctx.fillRect(244, y, 230, 6);
+  ctx.fillStyle = 'rgba(120,200,150,.22)'; ctx.fillRect(250, top + 60, 220, 180);   // safety net
+}
+function drawCrane(){
+  const vTop = VR.top - 80, vBot = VR.bot + 80;
+  const x0 = 16, x1 = 50, top = CONFIG.jibY + 22, bot = G, J = CONFIG.jibY;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = COLORS.craneDark; ctx.lineWidth = 2.2;
+  for (let y = bot; y > top; y -= 34){
+    if (y < vTop || y - 34 > vBot) continue;
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y - 17); ctx.lineTo(x0, y - 34); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+  }
+  ctx.strokeStyle = COLORS.crane; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(x0, Math.max(top, vTop)); ctx.lineTo(x0, Math.min(bot, vBot));
+  ctx.moveTo(x1, Math.max(top, vTop)); ctx.lineTo(x1, Math.min(bot, vBot)); ctx.stroke();
+  if (vTop > J + 260) return;
+  ctx.strokeStyle = COLORS.craneDark; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(33, J - 70); ctx.lineTo(W + 10, J); ctx.moveTo(33, J - 70); ctx.lineTo(-30, J); ctx.stroke();
+  ctx.fillStyle = COLORS.crane; ctx.beginPath(); ctx.moveTo(24, J); ctx.lineTo(33, J - 74); ctx.lineTo(42, J); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = COLORS.craneDark; ctx.lineWidth = 2;
+  ctx.beginPath(); for (let x = -20; x < W + 20; x += 26){ ctx.moveTo(x, J + 22); ctx.lineTo(x + 13, J); ctx.lineTo(x + 26, J + 22); } ctx.stroke();
+  ctx.strokeStyle = COLORS.crane; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(-20, J); ctx.lineTo(W + 20, J); ctx.moveTo(-20, J + 22); ctx.lineTo(W + 20, J + 22); ctx.stroke();
+  ctx.fillStyle = '#f7cf4f'; rrect(ctx, 4, top, 60, 46, 8); ctx.fill();
+  ctx.fillStyle = '#bfe6ff'; rrect(ctx, 12, top + 8, 30, 20, 4); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(15, top + 10, 6, 15);
+  const tx = g.trolleyX, hookY = CONFIG.hangY - BH / 2 - 34 + (g.attached ? g.brick.y - CONFIG.hangY : 0);
+  ctx.fillStyle = COLORS.steel; rrect(ctx, tx - 15, J + 22, 30, 11, 3); ctx.fill();
+  ctx.strokeStyle = '#4a525e'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(tx - 3, J + 33); ctx.lineTo(tx - 3, hookY - 12); ctx.moveTo(tx + 3, J + 33); ctx.lineTo(tx + 3, hookY - 12); ctx.stroke();
+  ctx.fillStyle = COLORS.steel; rrect(ctx, tx - 8, hookY - 14, 16, 14, 3); ctx.fill();
+  ctx.strokeStyle = COLORS.steel; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(tx, hookY + 6, 6, -Math.PI / 2, Math.PI * .9); ctx.stroke();
+  if (g.attached){
+    const b = g.brick, c = Math.cos(b.ang), s = Math.sin(b.ang);
+    ctx.strokeStyle = '#7a6a5a'; ctx.lineWidth = 1.4; ctx.beginPath();
+    for (const sx of [-1, 1]){ const cx = sx * (BW / 2 - 8), cy = -BH / 2; ctx.moveTo(tx, hookY + 10); ctx.lineTo(b.x + cx * c - cy * s, b.y + cx * s + cy * c); }
+    ctx.stroke();
+  }
+}
+function drawWall(){
+  const w = g.wall; if (!w.canvas) return;
+  ctx.save(); ctx.translate(w.x, w.y); ctx.rotate(w.ang);
+  ctx.drawImage(w.canvas, WALL_X0, WALL_Y0, WALL_W, WALL_H);
+  if (CONFIG.debug){
+    ctx.strokeStyle = 'rgba(255,0,80,.9)'; ctx.lineWidth = 1.5;
+    for (const c of g.geo.cuts){ ctx.save(); ctx.translate(c.cx, c.cy); ctx.rotate(c.ang); ctx.strokeRect(-c.hw, -c.hh, c.hw * 2, c.hh * 2); ctx.restore(); }
+    ctx.beginPath(); ctx.moveTo(-320, g.geo.wallTop); ctx.lineTo(320, g.geo.wallTop); ctx.stroke();
+  }
+  ctx.restore();
+}
+// where the target slot's channel meets the wall surface (wall-local)
+function slotEntry(c){
+  const t = (c.cy - g.geo.wallTop) / Math.max(.2, Math.cos(c.ang));
+  return { x: c.cx + t * Math.sin(c.ang), y: g.geo.wallTop };
+}
+function drawFlag(){
+  if (!g.geo || !g.geo.flag) return;
+  const c = g.geo.cuts[0], e = slotEntry(c), ent = toWorld(e.x, e.y);
+  const blink = Math.floor(g.time * 4) % 2 === 0, col = blink ? '#ff4d4d' : '#ffd23f';
+  const bounce = Math.abs(Math.sin(g.time * 6)) * 12;
+  const ay = ent.y - 40 - bounce;                       // arrow tip, right over the target slot
+  ctx.save(); ctx.strokeStyle = COLORS.ink; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // flag on a pole sitting on top of the arrow
+  const side = ent.x < W / 2 ? 1 : -1, pb = ay - 26, pt = pb - 58, wave = Math.sin(g.time * 8) * 4;
+  ctx.strokeStyle = '#6b4a2e'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(ent.x, pb); ctx.lineTo(ent.x, pt); ctx.stroke();
+  ctx.fillStyle = col; ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(ent.x, pt); ctx.quadraticCurveTo(ent.x + side * 22, pt + 6 + wave, ent.x + side * 42, pt + 12);
+  ctx.lineTo(ent.x, pt + 26); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // big blinking arrow pointing into the slot
+  ctx.globalAlpha = blink ? 1 : .6; ctx.fillStyle = col; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(ent.x - 10, ay - 26); ctx.lineTo(ent.x + 10, ay - 26); ctx.lineTo(ent.x + 10, ay - 10); ctx.lineTo(ent.x + 20, ay - 10);
+  ctx.lineTo(ent.x, ay + 10); ctx.lineTo(ent.x - 20, ay - 10); ctx.lineTo(ent.x - 10, ay - 10); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+function drawCone(x){
+  const y = G + 6;
+  ctx.fillStyle = '#5a3a22'; rrect(ctx, x - 16, y - 4, 32, 7, 3); ctx.fill();
+  ctx.fillStyle = '#f39a4b'; ctx.beginPath(); ctx.moveTo(x - 12, y - 3); ctx.lineTo(x - 3, y - 34); ctx.lineTo(x + 3, y - 34); ctx.lineTo(x + 12, y - 3); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#fff6e6'; ctx.beginPath(); ctx.moveTo(x - 8.5, y - 14); ctx.lineTo(x - 6, y - 22); ctx.lineTo(x + 6, y - 22); ctx.lineTo(x + 8.5, y - 14); ctx.closePath(); ctx.fill();
+}
+function drawGround(){
+  if (VR.bot < G - 40) return;
+  ctx.fillStyle = COLORS.ground; ctx.fillRect(-40, G, W + 80, 800);
+  ctx.fillStyle = COLORS.groundTop; ctx.fillRect(-40, G, W + 80, 8);
+  ctx.fillStyle = 'rgba(150,110,70,.25)';
+  for (const p of PEBBLES){ ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * 1.4, p.r, 0, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = '#efd3a3'; ctx.beginPath(); ctx.ellipse(96, G + 4, 46, 26, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = '#b98c5a'; ctx.fillRect(296, G - 8, 74, 10);
+  const spr = getSprites('#b8773f');
+  for (let r = 0; r < 3; r++) for (let i = 0; i < 2; i++) drawSprite(ctx, spr[(r + i) % spr.length], 314 + i * 36 + (r % 2) * 4, G - 16 - r * 15, 0, .48);
+  drawCone(66); drawCone(230);
+}
+function drawDial(){   // circle-control feedback ring around the hanging/falling brick
+  if (!steering() || input.mode === 'gyro') return;
+  const b = g.brick, R = 54, t = targetAngleDeg() * D2R;
+  ctx.save(); ctx.strokeStyle = 'rgba(90,58,34,.35)'; ctx.lineWidth = 2; ctx.setLineDash([4, 6]);
+  ctx.beginPath(); ctx.arc(b.x, b.y, R, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(201,92,75,.55)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(b.x, b.y, R, t - .5, t + .5); ctx.stroke();
+  ctx.fillStyle = '#fff6e6'; ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(b.x + Math.cos(t) * R, b.y + Math.sin(t) * R, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+function drawBrick(){
+  const b = g.brick;
+  if (g.phase === 'fall'){
+    ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 2;
+    for (const o of [-24, 0, 24]){ ctx.beginPath(); ctx.moveTo(b.x + o, b.y - 24); ctx.lineTo(b.x + o - b.vx * .05, b.y - 24 - b.vy * .06); ctx.stroke(); }
+  }
+  drawSprite(ctx, PLAYER_SPR, b.x, b.y, b.ang);
+  if (CONFIG.debug){
+    const c = Math.cos(b.ang), s = Math.sin(b.ang); ctx.fillStyle = '#ff0050';
+    for (const [px, py] of SAMPLES){ ctx.fillRect(b.x + px * c - py * s - 1, b.y + px * s + py * c - 1, 2, 2); }
+  }
+}
+function drawParticles(){
+  for (const p of g.particles){
+    ctx.globalAlpha = clamp(p.life, 0, 1);
+    if (p.type === 'dust'){ ctx.fillStyle = '#f3e3c4'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); }
+    else { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.c; ctx.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); ctx.restore(); }
+  }
+  ctx.globalAlpha = 1;
+}
+function drawGuides(){
+  if (g.phase !== 'aim' && g.phase !== 'tilt') return;
+  const b = g.brick; ctx.strokeStyle = 'rgba(90,58,34,.35)'; ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
+  ctx.beginPath(); ctx.moveTo(b.x, b.y + 60); ctx.lineTo(b.x, VR.bot); ctx.stroke(); ctx.setLineDash([]);
+}
+function pillLabel(txt, x, y, size){
+  ctx.font = `800 ${size}px "M PLUS Rounded 1c"`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const w = ctx.measureText(txt).width + size * 1.1, h = size * 1.6;
+  ctx.fillStyle = 'rgba(90,58,34,.9)'; rrect(ctx, x - w / 2, y - h / 2, w, h, h / 2); ctx.fill();
+  ctx.fillStyle = '#fff6e6'; ctx.fillText(txt, x, y + size * .05); ctx.textBaseline = 'alphabetic';
+}
+function drawMeasure(){   // ghost of the perfect spot + distance line + angle arc
+  const m = g.meas; if (!m) return;
+  const a = clamp((m.t - .5) / .45, 0, 1); if (a <= 0) return;
+  const z = VR.z, b = g.brick, tx = g.wall.x, ty = g.wall.y, tAng = g.wall.ang + g.geo.targetRot;
+  ctx.save(); ctx.globalAlpha = a;
+  ctx.save(); ctx.translate(tx, ty); ctx.rotate(tAng);
+  ctx.setLineDash([5 / z, 4 / z]); ctx.strokeStyle = '#4f9a3a'; ctx.lineWidth = 2.2 / z; ctx.strokeRect(-BW / 2, -BH / 2, BW, BH);
+  ctx.setLineDash([]); ctx.restore();
+  // centre-to-centre line
+  const ex = lerp(tx, b.x, a), ey = lerp(ty, b.y, a);
+  ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 2 / z; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(ex, ey); ctx.stroke();
+  ctx.strokeStyle = '#4f9a3a'; ctx.lineWidth = 2.5 / z; const cs = 6 / z;
+  ctx.beginPath(); ctx.moveTo(tx - cs, ty); ctx.lineTo(tx + cs, ty); ctx.moveTo(tx, ty - cs); ctx.lineTo(tx, ty + cs); ctx.stroke();
+  ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.arc(b.x, b.y, 3.2 / z, 0, Math.PI * 2); ctx.fill();
+  // angle arc at the brick centre (target orientation → brick orientation)
+  const eRad = m.err * D2R, R = 26 / z * 1.4;
+  if (Math.abs(m.err) > .3){
+    ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2 / z; ctx.setLineDash([3 / z, 3 / z]);
+    ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x + Math.cos(tAng) * R * 1.3, b.y + Math.sin(tAng) * R * 1.3); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(b.x, b.y, R, tAng, tAng + eRad, eRad < 0); ctx.stroke();
+  }
+  if (a >= 1){
+    const fs = 13 / z;
+    pillLabel(`${m.mm} mm`, (tx + b.x) / 2, (ty + b.y) / 2 - 16 / z, fs);
+    pillLabel(`${Math.abs(m.err).toFixed(1)}°`, b.x + 0, b.y + BH / 2 + 18 / z + 6, fs);
+  }
+  ctx.restore();
+}
+
+/* =====================================================================
+   16. RENDER — screen overlays (minimap, gauge, popups)
+   ===================================================================== */
+function drawMinimap(){
+  const show = g.debugMode ? CONFIG.showMinimap : g.round <= CONFIG.minimapStages;
+  if (!show || !['aim', 'tilt', 'fall'].includes(g.phase)) return;
+  const mw = 96, mh = 74, mx = W - mw - 14, my = 64, s = mw / W, b = g.brick, geo = g.geo;
+  ctx.fillStyle = 'rgba(255,246,230,.92)'; rrect(ctx, mx, my, mw, mh, 10); ctx.fill();
+  ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.save(); rrect(ctx, mx, my, mw, mh, 10); ctx.clip();
+  const wy = my + mh - 20;
+  ctx.fillStyle = COLORS.groundTop; ctx.fillRect(mx, wy + 12, mw, 20);
+  ctx.save(); ctx.translate(mx + g.wall.x * s, wy); ctx.rotate(g.wall.ang); ctx.scale(s, s);
+  ctx.fillStyle = '#b8773f'; ctx.fillRect(-400, geo.wallTop, 800, 200);
+  for (const a of geo.adds) ctx.fillRect(a.x0, a.y0, a.x1 - a.x0, a.y1 - a.y0 + 2);
+  ctx.fillStyle = '#fff6e6';
+  for (const c of geo.cuts){ ctx.save(); ctx.translate(c.cx, c.cy); ctx.rotate(c.ang); ctx.fillRect(-c.hw, -c.hh - c.ext, c.hw * 2, c.hh * 2 + c.ext); ctx.restore(); }
+  ctx.rotate(geo.targetRot); ctx.strokeStyle = '#4f9a3a'; ctx.lineWidth = 2 / s; ctx.strokeRect(-BW / 2, -BH / 2, BW, BH);
+  ctx.restore();
+  const fallP = clamp((b.y - CONFIG.hangY) / (g.wall.y - CONFIG.hangY), 0, 1);
+  ctx.save(); ctx.translate(mx + b.x * s, lerp(my + 14, wy - 10, fallP)); ctx.rotate(b.ang);
+  ctx.fillStyle = COLORS.player; ctx.fillRect(-BW * s / 2, -BH * s / 2, BW * s, BH * s); ctx.restore();
+  ctx.restore();
+  ctx.fillStyle = COLORS.ink; ctx.font = '800 9px "M PLUS Rounded 1c"'; ctx.textAlign = 'center'; ctx.fillText('TARGET', mx + mw / 2, my + mh + 12);
+}
+function drawGauge(){
+  if (!steering()) return;
+  const cx = W / 2, cy = H - 172, r = 30, deg = wrap90(g.brick.ang / D2R);
+  ctx.fillStyle = 'rgba(255,246,230,.9)'; ctx.beginPath(); ctx.arc(cx, cy, r + 6, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(g.brick.ang); ctx.fillStyle = COLORS.player; rrect(ctx, -20, -8, 40, 16, 3); ctx.fill(); ctx.restore();
+  ctx.fillStyle = COLORS.ink; ctx.font = '800 12px "M PLUS Rounded 1c"'; ctx.textAlign = 'center';
+  ctx.fillText(`${deg >= 0 ? '+' : ''}${Math.round(deg)}°`, cx, cy + r + 22);
+}
+function outlinedText(txt, x, y, size, fill, stroke = COLORS.ink, sw = 7){
+  ctx.font = `800 ${size}px "M PLUS Rounded 1c"`; ctx.textAlign = 'center'; ctx.lineJoin = 'round';
+  ctx.strokeStyle = stroke; ctx.lineWidth = sw; ctx.strokeText(txt, x, y); ctx.fillStyle = fill; ctx.fillText(txt, x, y);
+}
+function drawPopup(){
+  const p = g.popup; if (!p) return;
+  const s = p.t < .35 ? lerp(.3, 1, easeOutBack(p.t / .35)) : 1;
+  ctx.save(); ctx.translate(W / 2, 175); ctx.scale(s, s);
+  outlinedText(p.title, 0, 0, 50, p.color, COLORS.ink, 9);
+  outlinedText(p.sub, 0, 34, 14, COLORS.ink, '#fff6e6', 5);
+  ctx.restore();
+}
+function drawBanner(){
+  const bn = g.banner; if (!bn) return;
+  const a = clamp(Math.min(bn.t * 4, (2.4 - bn.t) * 3), 0, 1); if (a <= 0) return;
+  ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, 200); const s = lerp(.6, 1, easeOutBack(clamp(bn.t / .35, 0, 1))); ctx.scale(s, s);
+  outlinedText(bn.title, 0, 0, 44, '#fff6e6', COLORS.ink, 9);
+  outlinedText(bn.sub, 0, 32, 13, COLORS.ink, '#fff6e6', 5);
+  ctx.restore();
+}
+function drawDebugText(){
+  if (!CONFIG.debug) return;
+  const L = toLocal(g.brick.x, g.brick.y);
+  const lines = [`phase ${g.phase}  type ${g.geo ? g.geo.variant : '-'}`, `wall ${(g.wall.ang / D2R).toFixed(1)}°  hole x ${g.wall.x.toFixed(0)}`,
+    `brick ${(g.brick.ang / D2R).toFixed(1)}°  err ${g.geo ? wrap90((g.brick.ang - g.wall.ang - g.geo.targetRot) / D2R).toFixed(1) : 0}°`,
+    `local x ${L.x.toFixed(1)}  y ${L.y.toFixed(1)}`, `input ${input.mode}  roll ${input.rollS.toFixed(1)}  crank ${(input.crank.ang / D2R).toFixed(0)}°`];
+  ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(60, 62, 250, lines.length * 14 + 8);
+  ctx.fillStyle = '#fff'; ctx.font = '11px monospace'; ctx.textAlign = 'left';
+  lines.forEach((l, i) => ctx.fillText(l, 66, 76 + i * 14));
+}
+
+function render(){
+  const k = VIEW.scale * VIEW.dpr;
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  // camera: normal scroll, blended into a zoom on the landing spot
+  const zk = g.zoom.k, z = lerp(1, g.zoom.Z, zk);
+  const cx = lerp(W / 2, g.zoom.fx, zk), cy = lerp(g.cam.y + H / 2, g.zoom.fy, zk);
+  VR.z = z; VR.top = cy - H / 2 / z; VR.bot = cy + H / 2 / z; VR.left = cx - W / 2 / z; VR.right = cx + W / 2 / z;
+  const sx = (Math.random() - .5) * g.shake, sy = (Math.random() - .5) * g.shake;
+  ctx.save(); ctx.translate(W / 2 + sx, H / 2 + sy); ctx.scale(z, z); ctx.translate(-cx, -cy);
+  drawSky(); drawClouds(); drawCity(); drawFrame(); drawCrane();
+  drawWall(); drawGround(); drawFlag(); drawGuides(); drawDial(); drawBrick(); drawMeasure(); drawParticles();
+  ctx.restore();
+  drawMinimap(); drawGauge(); drawBanner(); drawPopup(); drawDebugText();
+}
+
+/* =====================================================================
+   17. UI WIRING (HUD, buttons, panels)
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const actionBtn = $('actionBtn'), hintEl = $('hint'), calibPanel = $('calibPanel'), calLive = $('calLive');
+
+function updateHUD(){
+  $('roundPill').textContent = `ROUND ${Math.max(1, g.round)}/${CONFIG.rounds}`;
+  $('scorePill').textContent = `★ ${g.total}`;
+}
+function updateUI(){
+  const m = input.mode;
+  let hint = '', btn = null, red = false;
+  switch (g.phase){
+    case 'intro': hint = 'Watch the wall — where is the slot?'; btn = 'SKIP ▶'; g.actionReady = true; break;
+    case 'aim':
+      hint = twistMode() ? 'Slide the mouse (in your twisted grip) to move the brick · SPACE to set'
+           : m === 'mouse' ? 'Move the mouse to pick the drop spot · click or SPACE to set' : 'Drag left / right to pick the drop spot';
+      btn = 'SET SPOT ✓'; g.actionReady = true; break;
+    case 'tilt':
+      hint = m === 'gyro' ? 'Turn your phone like a steering wheel to rotate the brick'
+           : m === 'touch' ? 'Circle your finger around the brick to rotate it'
+           : input.mouseStyle === 'twist' ? 'Twist the mouse to turn the brick · SPACE to DROP'
+           : 'Slide the mouse left / right to tilt · SPACE to DROP';
+      btn = 'DROP!'; red = true; g.actionReady = true; break;
+    case 'fall': hint = 'Keep turning! Leaning pulls the brick sideways'; g.actionReady = false; break;
+    case 'slide': case 'guided': hint = 'Sliding in…'; g.actionReady = false; break;
+    case 'measure': hint = 'Measuring…'; g.actionReady = false; break;
+    case 'done':
+      if (g.actionReady) btn = g.round >= CONFIG.rounds ? 'SEE RESULTS ▶' : 'NEXT BRICK ▶';
+      break;
+    default: g.actionReady = false;
+  }
+  hintEl.textContent = hint;
+  actionBtn.classList.toggle('hidden', !btn); actionBtn.classList.toggle('red', red);
+  if (btn) actionBtn.textContent = btn;
+}
+actionBtn.addEventListener('click', () => { if (g.actionReady) confirmAction(); });
+
+let toastTimer = 0;
+function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1300); }
+
+$('btnMap').addEventListener('click', () => { CONFIG.showMinimap = !CONFIG.showMinimap; $('btnMap').classList.toggle('off', !CONFIG.showMinimap); });
+function toggleDebug(){ CONFIG.debug = !CONFIG.debug; $('btnDbg').classList.toggle('off', !CONFIG.debug); }
+$('btnDbg').addEventListener('click', toggleDebug);
+$('btnCal').addEventListener('click', () => {
+  if (input.mode === 'gyro'){ input.rollZero = input.rollS; input.keyAng = 0; toast('Phone re-centred'); }
+  else { resetCrank(); toast('Rotation reset to flat'); }
+});
+
+$('lockBtn').addEventListener('click', () => { $('lockBtn').blur(); lockPointer(); });
+let secretSeq = '', debugArmed = false;
+$('kD').addEventListener('click', () => { secretSeq = 'D'; });
+$('kB').addEventListener('click', () => { if (secretSeq === 'D') debugArmed = true; secretSeq = ''; });
+async function beginFlow(forced){
+  initAudio(); SFX.click(); g.forced = forced;
+  g.debugMode = debugArmed;
+  $('btnMap').classList.toggle('hidden', !g.debugMode); $('btnDbg').classList.toggle('hidden', !g.debugMode);
+  if (g.debugMode) setTimeout(() => toast('🐞 Debug mode on'), 300);
+  let gyroOk = false;
+  if (isCoarse){ gyroOk = await enableGyro(); if (gyroOk) await new Promise(r => setTimeout(r, 600)); }
+  input.mode = gyroOk && input.gyroSeen ? 'gyro' : isCoarse ? 'touch' : 'mouse';
+  $('titlePanel').classList.add('hidden');
+  if (input.mode === 'gyro'){
+    $('calTitle').textContent = 'Calibrate';
+    $('calText').textContent = 'Hold your phone the way you\'ll play, upright and straight, then tap CALIBRATE. Turning it like a steering wheel rotates the brick — all the way round.';
+    $('calBtn').textContent = 'CALIBRATE';
+  } else if (input.mode === 'mouse'){
+    showTwistCalStart();
+  } else {
+    $('calTitle').textContent = 'Touch controls';
+    $('calText').textContent = 'No gyroscope found, so circle your finger around the brick to rotate it instead. Drag to aim, tap SET, rotate, tap DROP.';
+    calLive.textContent = ''; $('calBtn').textContent = 'GOT IT';
+  }
+  calibPanel.classList.remove('hidden');
+}
+$('playBtn').addEventListener('click', () => beginFlow(null));
+document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => beginFlow(c.dataset.v)));
+function showTwistCalStart(msg){
+  input.mouseStyle = 'twist'; input.cal.state = 'ready';
+  $('calTitle').textContent = 'Mouse twist calibration';
+  $('calText').innerHTML = (msg ? `<b>${msg}</b><br>` : '') +
+    '1. Hold your mouse straight, the way you normally do.<br>2. Click <b>START</b> (or press SPACE), then <b>twist the mouse 90° to the right</b> (clockwise, like turning a key) — try not to slide it.<br>3. Click or press <b>SPACE</b> when you\'ve turned it.';
+  calLive.textContent = ''; $('calBtn').textContent = 'START';
+  $('calAlt').classList.remove('hidden');
+}
+function startTwistMeasure(){
+  Object.assign(input.cal, { state: 'measuring', sx: 0, sy: 0 });
+  lockPointer();
+  $('calBtn').textContent = 'DONE — I TWISTED 90°'; calLive.textContent = 'measured: 0 px';
+  $('calText').innerHTML = '<b>Now twist the mouse 90° to the right</b>, then click or press <b>SPACE</b>.';
+}
+function finishTwistCal(){
+  const c = input.cal, len = Math.hypot(c.sx, c.sy);
+  if (len < 15){ unlockPointer(); showTwistCalStart('Too small — twist further (about a quarter turn).'); return; }
+  c.ux = c.sx / len; c.uy = c.sy / len; c.pxPer90 = len; c.state = 'done';
+  SFX.ding(); toast(`Calibrated: ${Math.round(len)} px = 90°`);
+  calibPanel.classList.add('hidden'); $('calAlt').classList.add('hidden'); startGame();
+}
+$('calBtn').addEventListener('click', () => {
+  $('calBtn').blur(); SFX.click();
+  if (input.mode === 'mouse' && input.mouseStyle === 'twist'){
+    if (input.cal.state === 'ready'){ startTwistMeasure(); return; }
+    if (input.cal.state === 'measuring'){ finishTwistCal(); return; }
+  }
+  if (input.mode === 'gyro') input.rollZero = input.rollS;
+  calibPanel.classList.add('hidden'); $('calAlt').classList.add('hidden'); startGame();
+});
+$('calAlt').addEventListener('click', () => {
+  $('calAlt').blur();
+  if (input.mouseStyle === 'slide'){ showTwistCalStart(); $('calAlt').textContent = 'Use left / right control instead'; return; }
+  input.mouseStyle = 'slide'; input.cal.state = 'idle'; unlockPointer();
+  $('calTitle').textContent = 'Left / right control';
+  $('calText').innerHTML = '1. Move the mouse to pick the drop spot, click to set.<br>2. That spot is your neutral — <b>slide the mouse left / right</b> from there to tilt the brick.<br>3. Click (or Space) to drop, and keep steering as it falls!';
+  calLive.textContent = ''; $('calBtn').textContent = 'GOT IT'; $('calAlt').textContent = 'Use twist control instead';
+});
+
+function gameOver(){
+  unlockPointer();
+  g.phase = 'over'; updateUI();
+  const avg = g.total / CONFIG.rounds;
+  let best = 0; try { best = +localStorage.getItem('brickdrop_best_v2') || 0; if (g.total > best){ best = g.total; localStorage.setItem('brickdrop_best_v2', best); } } catch (e) {}
+  $('overScore').textContent = `${g.total} / ${CONFIG.rounds * 100}`;
+  $('overRank').textContent = avg >= 95 ? '🏆 Master Mason' : avg >= 80 ? '🧱 Pro Bricklayer' : avg >= 60 ? '👷 Apprentice' : 'Keep practising!';
+  $('overBreak').textContent = g.scores.map((s, i) => `#${i + 1}: ${s}`).join('  ·  ');
+  $('overBest').textContent = best ? `Best: ${best}` : '';
+  $('overPanel').classList.remove('hidden');
+}
+$('againBtn').addEventListener('click', () => { SFX.click(); $('titlePanel').classList.remove('hidden'); $('overPanel').classList.add('hidden'); g.phase = 'title'; g.popup = null; g.meas = null; g.zoom.k = 0; updateUI(); });
+
+/* =====================================================================
+   18. MAIN LOOP
+   ===================================================================== */
+setupWall(1); updateHUD(); updateUI();
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (!g.paused) update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
